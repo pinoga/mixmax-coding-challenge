@@ -63,10 +63,6 @@ export class DynamoDBMapper {
       : this.workspacePK(query.workspaceId, query.metricId);
   }
 
-  public static dateQuery(date: string): string {
-    return `H#${date}`;
-  }
-
   private static PKandSKToID(pk: string, sk: string): string {
     return `${pk}#${sk}`;
   }

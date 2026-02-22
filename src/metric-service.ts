@@ -8,15 +8,6 @@ import { Logger } from "./logger/logger";
 import { DynamoDBMapper } from "./mappers/dynamodb.mapper";
 import { concurrently } from "./utils/concurrently";
 
-export interface DynamoDBMetricsResponse {
-  userId: string;
-  workspaceId: string;
-  fromDate: string;
-  toDate: string;
-  count: number;
-  metricId: string;
-}
-
 export interface UpdateItemRequest {
   sk: string;
   pk: string;
