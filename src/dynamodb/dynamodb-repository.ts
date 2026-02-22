@@ -1,4 +1,6 @@
-import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { MetricQuerySchema } from "../dto/metric-query";
+import { DynamoDBMapper } from "../mappers/dynamodb.mapper";
 import { DynamoDBClientFactory } from "./dynamodb-client";
 
 interface MetricItem {
@@ -9,23 +11,22 @@ interface MetricItem {
 
 export class MetricsRepository {
   private static readonly tableName = process.env.DYNAMODB_TABLE_NAME;
-  private readonly client = DynamoDBDocumentClient.from(
-    DynamoDBClientFactory.create({}),
-  );
+
+  public constructor(
+    private readonly client = DynamoDBClientFactory.create({}),
+  ) {}
 
   public async getMetricCountFromDates(
-    pk: string,
-    fromDate: string,
-    toDate: string,
+    query: MetricQuerySchema,
   ): Promise<number> {
     const results = await this.client.send(
       new QueryCommand({
         TableName: MetricsRepository.tableName,
         KeyConditionExpression: "pk = :pk and sk between :fromDate and :toDate",
         ExpressionAttributeValues: {
-          ":pk": pk,
-          ":fromDate": `H#${fromDate}`,
-          ":toDate": `H#${toDate}`,
+          ":pk": DynamoDBMapper.queryRequestToPK(query),
+          ":fromDate": `H#${query.fromDate}`,
+          ":toDate": `H#${query.toDate}`,
         },
       }),
     );

@@ -9,7 +9,7 @@ export class MetricUpdatesMessage {
   public static messageBodySchema = z.object({
     workspaceId: z.string().min(1),
     count: z.number().positive(),
-    date: z.string().min(1).regex(DateValidator["YYYY-MM-DDThhRegExp"]),
+    date: DateValidator["YYYY-MM-DDThhRegExpDate"](z),
     metricId: z.string().min(1),
     userId: z.string().min(1).optional(),
   });

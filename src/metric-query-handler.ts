@@ -1,45 +1,29 @@
-import { DynamoDBClient, QueryCommand, ScanCommand } from '@aws-sdk/client-dynamodb';
+import { MetricQuery, MetricQuerySchema } from "./dto/metric-query";
+import { MetricsRepository } from "./dynamodb/dynamodb-repository";
+import { MetricsService } from "./metric-service";
 
-export const main = async (request: any) => {
-  const client = new DynamoDBClient({});
-  const tableName = `feature-usage-${process.env.ENV || 'local'}`;
+const metricsRepository = new MetricsRepository();
+const metricsService = new MetricsService(metricsRepository);
 
-  let pk: string;
-  if (request.userId) {
-    pk = `USR#${request.userId}#MET#${request.metricId}`;
-  } else {
-    pk = `WSP#${request.workspaceId}#MET#${request.metricId}`;
+export const main = async (request: MetricQuerySchema) => {
+  try {
+    MetricQuery.validate(request);
+
+    const metricCount = await metricsService.queryMetricCount(request);
+
+    return {
+      userId: request.userId,
+      workspaceId: request.workspaceId,
+      fromDate: request.fromDate,
+      toDate: request.toDate,
+      count: metricCount,
+      metricId: request.metricId,
+    };
+  } catch (error) {
+    throw new Error(`Couldn't query for metrics`, {
+      cause: error,
+    });
   }
-
-  const fromDate = request.fromDate;
-  const toDate = request.toDate;
-
-  const queryFrom = `H#${fromDate}`;
-  const queryTo = `H#${toDate}`;
-
-  const result: any = await client.send(
-    new QueryCommand({
-      TableName: tableName,
-      KeyConditionExpression: 'pk = :pk and sk between :fromDate and :toDate',
-      ExpressionAttributeValues: {
-        ':pk': { S: pk },
-        ':fromDate': { S: queryFrom },
-        ':toDate': { S: queryTo },
-      },
-    })
-  );
-
-  return {
-    userId: request.userId,
-    workspaceId: request.workspaceId,
-    fromDate: request.fromDate,
-    toDate: request.toDate,
-    count: (result.Items ?? []).reduce(
-      (sum: number, item: any) => sum + Number(item.count?.N ?? 0),
-      0
-    ),
-    metricId: request.metricId,
-  };
 };
 
 module.exports = { main };

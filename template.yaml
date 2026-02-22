@@ -35,17 +35,15 @@ Parameters:
     Type: Number
     Default: "3000"
 
+  QueryMaxDateRangeInDays:
+    Type: Number
+    Default: "1825"
+
 Globals:
   Function:
     Runtime: nodejs18.x
     Timeout: !Ref LambdaTimeout
     MemorySize: !Ref LambdaMemorySize
-    Environment:
-      Variables:
-        ENV: !Ref Environment
-        DYNAMODB_WRITE_CONCURRENCY: !Ref DynamoDBWriteConcurrency
-        DYNAMODB_TABLE_NAME: !Ref DynamoDBTableName
-        DYNAMODB_CLIENT_REQUEST_TIMEOUT_MS: !Ref DynamoDBClientRequestTimeoutMs
 
 Resources:
   MetricQueryHandler:
@@ -53,6 +51,11 @@ Resources:
     Properties:
       Handler: src/metric-query-handler.main
       CodeUri: .
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref DynamoDBTableName
+          QUERY_MAX_DATE_RANGE_IN_DAYS: !Ref QueryMaxDateRangeInDays
+
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref UsageTable
@@ -60,7 +63,7 @@ Resources:
       BuildMethod: esbuild
       BuildProperties:
         Minify: false
-        Target: es2020
+        Target: es2022
         Sourcemap: true
         EntryPoints:
           - src/metric-query-handler.ts
@@ -81,6 +84,11 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref UsageTable
+      Environment:
+        Variables:
+          DYNAMODB_WRITE_CONCURRENCY: !Ref DynamoDBWriteConcurrency
+          DYNAMODB_TABLE_NAME: !Ref DynamoDBTableName
+          DYNAMODB_CLIENT_REQUEST_TIMEOUT_MS: !Ref DynamoDBClientRequestTimeoutMs
     Metadata:
       BuildMethod: esbuild
       BuildProperties:

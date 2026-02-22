@@ -1,4 +1,5 @@
-import { MetricUpdatesMessageSchema } from "../events/metric-updates-event";
+import { MetricQuerySchema } from "../dto/metric-query";
+import { MetricUpdatesMessageSchema } from "../dto/metric-updates-event";
 
 interface DynamoDBItemIdentifier {
   pk: string;
@@ -40,6 +41,14 @@ export class DynamoDBMapper {
     return items;
   }
 
+  public static userPK(userId: string, metricId: string): string {
+    return `USR#${userId}#MET#${metricId}`;
+  }
+
+  public static workspacePK(workspaceId: string, metricId: string): string {
+    return `WSP#${workspaceId}#MET#${metricId}`;
+  }
+
   public static eventToHourlySK(message: MetricUpdatesMessageSchema): string {
     return `H#${message.date}`;
   }
@@ -48,7 +57,17 @@ export class DynamoDBMapper {
     return `D#${message.date.substring(0, 10)}`;
   }
 
-  public static PKandSKToID(pk: string, sk: string): string {
+  public static queryRequestToPK(query: MetricQuerySchema): string {
+    return query.userId
+      ? this.userPK(query.userId, query.metricId)
+      : this.workspacePK(query.workspaceId, query.metricId);
+  }
+
+  public static dateQuery(date: string): string {
+    return `H#${date}`;
+  }
+
+  private static PKandSKToID(pk: string, sk: string): string {
     return `${pk}#${sk}`;
   }
 }
