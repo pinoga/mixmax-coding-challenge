@@ -1,6 +1,11 @@
+import {
+  UpdateItemCommand,
+  UpdateItemCommandOutput,
+} from "@aws-sdk/client-dynamodb";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { MetricQuerySchema } from "../dto/metric-query";
 import { DynamoDBMapper } from "../mappers/dynamodb.mapper";
+import { UpdateItemRequest } from "../metric-service";
 import { DynamoDBClientFactory } from "./dynamodb-client";
 
 interface MetricItem {
@@ -34,6 +39,25 @@ export class MetricsRepository {
     return ((results.Items ?? []) as MetricItem[]).reduce(
       (sum, item) => sum + (item.count ?? 0),
       0,
+    );
+  }
+
+  public async incrementMetricCount({
+    inc,
+    pk,
+    sk,
+  }: UpdateItemRequest): Promise<UpdateItemCommandOutput> {
+    return this.client.send(
+      new UpdateItemCommand({
+        TableName: MetricsRepository.tableName,
+        Key: {
+          pk: { S: pk },
+          sk: { S: sk },
+        },
+        UpdateExpression: "ADD #count :inc",
+        ExpressionAttributeNames: { "#count": "count" },
+        ExpressionAttributeValues: { ":inc": { N: inc.toString() } },
+      }),
     );
   }
 }
