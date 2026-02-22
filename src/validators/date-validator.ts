@@ -1,4 +1,4 @@
-import { isValid } from "date-fns";
+import { isValid, parse } from "date-fns";
 import z, { ZodString } from "zod";
 
 export class DateValidator {
@@ -9,7 +9,7 @@ export class DateValidator {
   public static "YYYY-MM-DDThhRegExpDate"(): ZodString {
     return z
       .string()
-      .refine((date) => isValid(date))
-      .regex(this["YYYY-MM-DDThhRegExp"]);
+      .regex(this["YYYY-MM-DDThhRegExp"])
+      .refine((date) => isValid(parse(date, "yyyy-MM-dd'T'HH", new Date())));
   }
 }
