@@ -7,9 +7,9 @@ const metricsService = new MetricsService(metricsRepository);
 
 export const main = async (request: MetricQuerySchema) => {
   try {
-    MetricQuery.validate(request);
+    const query = MetricQuery.validate(request);
 
-    const metricCount = await metricsService.queryMetricCount(request);
+    const metricCount = await metricsService.queryMetricCount(query);
 
     return {
       userId: request.userId,
