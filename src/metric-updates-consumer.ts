@@ -1,22 +1,10 @@
 import { UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { SQSBatchResponse, SQSEvent } from "aws-lambda";
-import {
-  MetricUpdatesMessage,
-  MetricUpdatesMessageSchema,
-} from "./dto/metric-updates-event";
 import { DynamoDBClientFactory } from "./dynamodb/dynamodb-client";
-import { Logger } from "./logger/logger";
-import { DynamoDBMapper } from "./mappers/dynamodb.mapper";
+import { MetricsRepository } from "./dynamodb/dynamodb-repository";
+import { MetricsService } from "./metric-service";
 import { concurrently } from "./utils/concurrently";
 
-interface UpdateItemRequest {
-  sk: string;
-  pk: string;
-  inc: number;
-  messageIds: string[];
-}
-
-type ItemIDToUpdateItemRequestMap = Record<string, UpdateItemRequest>;
 const dynamoDbTableName = process.env.DYNAMODB_TABLE_NAME;
 const concurrency = Number(process.env.DYNAMODB_WRITE_CONCURRENCY) || 300;
 const client = DynamoDBClientFactory.create({
@@ -26,44 +14,14 @@ const client = DynamoDBClientFactory.create({
     httpsAgent: { maxSockets: concurrency },
   },
 });
-const logger = Logger.instance();
+const metricsService = new MetricsService(new MetricsRepository(client));
 
 export const main = async (event: SQSEvent): Promise<SQSBatchResponse> => {
   const batchItemFailedMessageIDs = new Set<string>();
 
   // aggregating increments for each DynamoDB item to save round-trips
-  const batchItemRequests = event.Records.reduce<ItemIDToUpdateItemRequestMap>(
-    (acc, record) => {
-      let message: MetricUpdatesMessageSchema;
-      try {
-        message = MetricUpdatesMessage.validate(record.body);
-      } catch (error) {
-        logger.error({
-          message: "Invalid MetricUpdatesMessage, skipping",
-          meta: { error },
-        });
-        return acc;
-      }
-      const items = DynamoDBMapper.eventMessageToItems(message);
-
-      for (const item of items) {
-        const updateItemRequest: UpdateItemRequest | undefined = acc[item.id];
-        if (updateItemRequest) {
-          updateItemRequest.inc += message.count;
-          updateItemRequest.messageIds.push(record.messageId);
-        } else {
-          acc[item.id] = {
-            messageIds: [record.messageId],
-            sk: item.sk,
-            pk: item.pk,
-            inc: message.count,
-          };
-        }
-      }
-
-      return acc;
-    },
-    {},
+  const batchItemRequests = metricsService.aggregateMetricUpdateRecords(
+    event.Records,
   );
 
   /* eslint-disable no-useless-assignment */
