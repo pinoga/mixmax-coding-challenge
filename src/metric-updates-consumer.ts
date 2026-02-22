@@ -1,9 +1,12 @@
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
-import { SQSEvent } from "aws-lambda";
+import { SQSBatchItemFailure, SQSBatchResponse, SQSEvent } from "aws-lambda";
 
-export const main = async (event: SQSEvent): Promise<void> => {
+export const main = async (event: SQSEvent): Promise<SQSBatchResponse> => {
   const client = new DynamoDBClient({});
   const tableName = `feature-usage-${process.env.ENV || "local"}`;
+  const batchChunkSize = Number(process.env.BATCH_CHUNK_SIZE) || 100;
+
+  const batchItemFailures = new Array<SQSBatchItemFailure>();
 
   for (const record of event.Records) {
     const body = JSON.parse(record.body);
@@ -64,6 +67,8 @@ export const main = async (event: SQSEvent): Promise<void> => {
       );
     }
   }
+
+  return { batchItemFailures };
 };
 
 module.exports = { main };

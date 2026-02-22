@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: Feature Usage Lambda Functions
 
@@ -10,6 +10,7 @@ Globals:
     Environment:
       Variables:
         ENV: local
+        BATCH_CHUNK_SIZE: 100
 
 Resources:
   MetricQueryHandler:
@@ -39,7 +40,9 @@ Resources:
           Type: SQS
           Properties:
             Queue: !GetAtt UsageQueue.Arn
-            BatchSize: 10
+            BatchSize: 300
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref UsageTable
