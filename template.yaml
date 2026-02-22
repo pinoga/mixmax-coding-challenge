@@ -120,8 +120,16 @@ Resources:
         AttributeName: ttl
         Enabled: true
 
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: feature-usage-updates-dlq
+
   UsageQueue:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: feature-usage-updates
       VisibilityTimeout: !Ref SQSVisibilityTimeout
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadLetterQueue.Arn
+        maxReceiveCount: 3
