@@ -10,8 +10,8 @@ It consists of two AWS Lambda functions, one invoked directly to query the metri
 
 A directly-invoked Lambda that queries usage metrics. It accepts a request with a metric name, a user or workspace identifier, and a date range (max 1825 days apart), then returns the total usage count from DynamoDB.
 
-
 **Input format:**
+
 ```json
 {
   "metricId": "emails-sent",
@@ -22,13 +22,13 @@ A directly-invoked Lambda that queries usage metrics. It accepts a request with 
 }
 ```
 
-| Field | Required | Format | Notes |
-|---|---|---|---|
-| `metricId` | Yes | string | The metric name to query (e.g. `"emails-sent"`) |
-| `workspaceId` | Yes | string | Workspace identifier — queries `WSP#` metrics |
-| `userId` | No | string | User identifier — if provided, queries `USR#` metrics instead of `WSP#` |
-| `fromDate` | Yes | `YYYY-MM-DDThh` | Start of date range (hourly precision). |
-| `toDate` | Yes | `YYYY-MM-DDThh` | End of date range (hourly precision). Max 1825 days from `fromDate`. |
+| Field         | Required | Format          | Notes                                                                   |
+| ------------- | -------- | --------------- | ----------------------------------------------------------------------- |
+| `metricId`    | Yes      | string          | The metric name to query (e.g. `"emails-sent"`)                         |
+| `workspaceId` | Yes      | string          | Workspace identifier — queries `WSP#` metrics                           |
+| `userId`      | No       | string          | User identifier — if provided, queries `USR#` metrics instead of `WSP#` |
+| `fromDate`    | Yes      | `YYYY-MM-DDThh` | Start of date range (hourly precision).                                 |
+| `toDate`      | Yes      | `YYYY-MM-DDThh` | End of date range (hourly precision). Max 1825 days from `fromDate`.    |
 
 ### Lambda 2: `metric-updates-consumer`
 
@@ -37,6 +37,7 @@ An SQS consumer Lambda that processes usage tracking events. Each message repres
 For each record in the batch, it increments both the hourly and daily count for the corresponding workspace (and optionally user) metric in dynamodb.
 
 **Input format (SQS event):**
+
 ```json
 {
   "Records": [
@@ -62,24 +63,24 @@ For each record in the batch, it increments both the hourly and daily count for 
 
 **Message body fields** (the JSON inside `body`):
 
-| Field | Required | Format | Notes |
-|---|---|---|---|
-| `workspaceId` | Yes | string | Workspace identifier — always writes a `WSP#` entry |
-| `userId` | No | string | User identifier — if provided, also writes a `USR#` entry |
-| `metricId` | Yes | string | The metric name (e.g. `"emails-sent"`) |
-| `count` | Yes | number | The increment amount |
-| `date` | Yes | `YYYY-MM-DDThh` | The date and hour the usage occurred (e.g. `"2024-01-15T14"` for 2pm) |
+| Field         | Required | Format          | Notes                                                                 |
+| ------------- | -------- | --------------- | --------------------------------------------------------------------- |
+| `workspaceId` | Yes      | string          | Workspace identifier — always writes a `WSP#` entry                   |
+| `userId`      | No       | string          | User identifier — if provided, also writes a `USR#` entry             |
+| `metricId`    | Yes      | string          | The metric name (e.g. `"emails-sent"`)                                |
+| `count`       | Yes      | number          | The increment amount                                                  |
+| `date`        | Yes      | `YYYY-MM-DDThh` | The date and hour the usage occurred (e.g. `"2024-01-15T14"` for 2pm) |
 
 ### DynamoDB Schema
 
 Single table design with composite key (`pk`, `sk`).
 
-| Entity | pk | sk |
-|---|---|---|
-| User hourly metric | `USR#{userId}#MET#{metricId}` | `H#YYYY-MM-DDThh` |
-| User daily metric | `USR#{userId}#MET#{metricId}` | `D#YYYY-MM-DD` |
+| Entity                  | pk                                 | sk                |
+| ----------------------- | ---------------------------------- | ----------------- |
+| User hourly metric      | `USR#{userId}#MET#{metricId}`      | `H#YYYY-MM-DDThh` |
+| User daily metric       | `USR#{userId}#MET#{metricId}`      | `D#YYYY-MM-DD`    |
 | Workspace hourly metric | `WSP#{workspaceId}#MET#{metricId}` | `H#YYYY-MM-DDThh` |
-| Workspace daily metric | `WSP#{workspaceId}#MET#{metricId}` | `D#YYYY-MM-DD` |
+| Workspace daily metric  | `WSP#{workspaceId}#MET#{metricId}` | `D#YYYY-MM-DD`    |
 
 ### Expected Throughput
 
@@ -87,6 +88,10 @@ Single table design with composite key (`pk`, `sk`).
 - **SQS queue for `metric-updates-consumer`**: 300 messages/second
 
 ## How to Run
+
+### Prerequisites
+
+- [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
 
 ```bash
 npm ci --legacy-peer-deps   # Install dependencies
@@ -97,9 +102,11 @@ npm run lint                # Lint
 ```
 
 ## Your Task
+
 The current project setup is basic. You need to make it release-ready, production-ready.
 
 **Constraints:**
+
 - The partition key and sort key format for user metrics (`USR#{userId}#MET#{metricId}`) and workspace metrics (`WSP#{workspaceId}#MET#{metricId}`) must not change
 - The input format for lambdas as defined above must not change
 - You must continue to use aws for infra, typescript as a language and dynamodb for the database
