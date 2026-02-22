@@ -10,7 +10,6 @@ Globals:
     Environment:
       Variables:
         ENV: local
-        BATCH_CHUNK_SIZE: 100
 
 Resources:
   MetricQueryHandler:

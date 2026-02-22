@@ -4,8 +4,8 @@ export interface LogMessage {
 }
 
 enum LogLevel {
-  INFO,
   ERROR,
+  INFO,
 }
 
 export class Logger {
