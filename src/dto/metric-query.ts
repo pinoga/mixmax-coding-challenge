@@ -10,8 +10,8 @@ export class MetricQuery {
   public static querySchema = z
     .object({
       workspaceId: z.string().min(1),
-      fromDate: DateValidator["YYYY-MM-DDThhRegExpDate"](z),
-      toDate: DateValidator["YYYY-MM-DDThhRegExpDate"](z),
+      fromDate: DateValidator["YYYY-MM-DDThhRegExpDate"](),
+      toDate: DateValidator["YYYY-MM-DDThhRegExpDate"](),
       metricId: z.string().min(1),
       userId: z.string().min(1).optional(),
     })
