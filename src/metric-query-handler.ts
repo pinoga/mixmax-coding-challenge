@@ -5,25 +5,34 @@ import { MetricsService } from "./metric-service";
 const metricsRepository = new MetricsRepository();
 const metricsService = new MetricsService(metricsRepository);
 
-export const main = async (request: MetricQuerySchema) => {
+export interface DynamoDBMetricsResponse {
+  userId?: string;
+  workspaceId: string;
+  fromDate: string;
+  toDate: string;
+  count: number;
+  metricId: string;
+}
+
+export const main = async (
+  request: MetricQuerySchema,
+): Promise<DynamoDBMetricsResponse> => {
   try {
     const query = MetricQuery.validate(request);
 
     const metricCount = await metricsService.queryMetricCount(query);
 
     return {
-      userId: request.userId,
+      ...(request.userId && { userId: request.userId }),
       workspaceId: request.workspaceId,
       fromDate: request.fromDate,
       toDate: request.toDate,
       count: metricCount,
       metricId: request.metricId,
-    };
+    } satisfies DynamoDBMetricsResponse;
   } catch (error) {
     throw new Error(`Couldn't query for metrics`, {
       cause: error,
     });
   }
 };
-
-module.exports = { main };

@@ -60,7 +60,7 @@ Resources:
           QUERY_MAX_DATE_RANGE_IN_DAYS: !Ref QueryMaxDateRangeInDays
 
       Policies:
-        - DynamoDBCrudPolicy:
+        - DynamoDBReadPolicy:
             TableName: !Ref UsageTable
     Metadata:
       BuildMethod: esbuild
