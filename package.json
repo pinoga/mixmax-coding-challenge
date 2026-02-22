@@ -13,7 +13,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/aws-lambda": "^8.10.140",
+    "@shelf/jest-dynamodb": "^3.4.1",
+    "@types/aws-lambda": "^8.10.160",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.14.0",
     "@typescript-eslint/eslint-plugin": "^8.55.0",
@@ -23,7 +24,6 @@
     "jest": "^29.7.0",
     "ts-jest": "^29.1.4",
     "typescript": "^5.4.0",
-    "typescript-eslint": "^8.55.0",
-    "@shelf/jest-dynamodb": "^3.4.1"
+    "typescript-eslint": "^8.55.0"
   }
 }

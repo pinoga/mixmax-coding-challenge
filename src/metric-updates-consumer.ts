@@ -1,6 +1,7 @@
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+import { SQSEvent } from "aws-lambda";
 
-export const main = async (event: any): Promise<void> => {
+export const main = async (event: SQSEvent): Promise<void> => {
   const client = new DynamoDBClient({});
   const tableName = `feature-usage-${process.env.ENV || "local"}`;
 
