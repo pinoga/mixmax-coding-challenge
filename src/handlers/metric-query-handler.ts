@@ -1,6 +1,6 @@
-import { MetricQuery, MetricQuerySchema } from "./dto/metric-query";
-import { MetricsRepository } from "./dynamodb/dynamodb-repository";
-import { MetricsService } from "./metric-service";
+import { MetricQuery, MetricQuerySchema } from "../dto/metric-query";
+import { MetricsRepository } from "../dynamodb/dynamodb-repository";
+import { MetricsService } from "../services/metric-service";
 
 const metricsRepository = new MetricsRepository();
 const metricsService = new MetricsService(metricsRepository);

@@ -11,7 +11,7 @@ jest.mock("@aws-sdk/client-dynamodb", () => {
   };
 });
 
-import { main as consumer } from "../../src/metric-updates-consumer";
+import { main as consumer } from "../../src/handlers/metric-updates-consumer";
 
 describe("metric-updates-consumer", () => {
   beforeEach(() => {
@@ -225,6 +225,67 @@ describe("metric-updates-consumer", () => {
     const failedIds = result.batchItemFailures.map((f) => f.itemIdentifier);
     expect(failedIds).toContain("msg-fail");
     expect(failedIds).not.toContain("msg-success");
+  });
+
+  it("should not report a message as failed when only some of its items fail (partial item failure)", async () => {
+    // Message with userId generates 4 items: USR hourly, USR daily, WSP hourly, WSP daily
+    // Only user-level writes fail, workspace-level succeed
+    mockSend.mockImplementation(
+      (command: { input: { Key: { pk: { S: string } } } }) => {
+        if (command.input.Key?.pk?.S?.startsWith("USR#")) {
+          return Promise.reject(new Error("throttle"));
+        }
+        return Promise.resolve({});
+      },
+    );
+
+    const result = await consumer(
+      sqsEvent([
+        {
+          body: validMessageBody({ userId: "user-1" }),
+          messageId: "msg-1",
+        },
+      ]),
+    );
+
+    expect(mockSend).toHaveBeenCalledTimes(4);
+    expect(result.batchItemFailures).toHaveLength(0);
+  });
+
+  it("should report a message as failed when all of its items fail", async () => {
+    mockSend.mockRejectedValue(new Error("DynamoDB throttle"));
+
+    const result = await consumer(
+      sqsEvent([
+        {
+          body: validMessageBody({ userId: "user-1" }),
+          messageId: "msg-1",
+        },
+      ]),
+    );
+
+    expect(mockSend).toHaveBeenCalledTimes(4);
+    const failedIds = result.batchItemFailures.map((f) => f.itemIdentifier);
+    expect(failedIds).toContain("msg-1");
+  });
+
+  it("should not report a message as failed when only daily writes fail", async () => {
+    // Hourly writes succeed, daily writes fail
+    mockSend.mockImplementation(
+      (command: { input: { Key: { sk: { S: string } } } }) => {
+        if (command.input.Key?.sk?.S?.startsWith("D#")) {
+          return Promise.reject(new Error("throttle"));
+        }
+        return Promise.resolve({});
+      },
+    );
+
+    const result = await consumer(
+      sqsEvent([{ body: validMessageBody(), messageId: "msg-1" }]),
+    );
+
+    expect(mockSend).toHaveBeenCalledTimes(2);
+    expect(result.batchItemFailures).toHaveLength(0);
   });
 
   it("should return empty failures when all writes succeed", async () => {

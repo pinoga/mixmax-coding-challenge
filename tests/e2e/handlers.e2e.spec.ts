@@ -6,8 +6,8 @@ process.env.AWS_SECRET_ACCESS_KEY = "fakeSecretAccessKey";
 process.env.ENV = "local";
 process.env.DYNAMODB_TABLE_NAME = "feature-usage-local";
 
-import { main as queryHandler } from "../../src/metric-query-handler";
-import { main as consumer } from "../../src/metric-updates-consumer";
+import { main as queryHandler } from "../../src/handlers/metric-query-handler";
+import { main as consumer } from "../../src/handlers/metric-updates-consumer";
 
 it("should write a metric and read it back", async () => {
   await consumer({

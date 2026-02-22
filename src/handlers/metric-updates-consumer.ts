@@ -1,5 +1,5 @@
 import { SQSBatchResponse, SQSEvent } from "aws-lambda";
-import { MetricsService } from "./metric-service";
+import { MetricsService } from "../services/metric-service";
 
 const metricsService = new MetricsService();
 
@@ -18,7 +18,7 @@ export const main = async (event: SQSEvent): Promise<SQSBatchResponse> => {
     await metricsService.batchIncrementMetrics(batchItemRequests);
 
   return {
-    batchItemFailures: [...batchItemFailedMessageIDs].map((itemIdentifier) => ({
+    batchItemFailures: batchItemFailedMessageIDs.map((itemIdentifier) => ({
       itemIdentifier,
     })),
   };

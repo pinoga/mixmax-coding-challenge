@@ -12,7 +12,7 @@ jest.mock("@aws-sdk/client-dynamodb", () => {
   };
 });
 
-import { main as queryHandler } from "../../src/metric-query-handler";
+import { main as queryHandler } from "../../src/handlers/metric-query-handler";
 
 describe("metric-query-handler", () => {
   beforeEach(() => {
