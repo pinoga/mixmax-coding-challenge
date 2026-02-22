@@ -1,5 +1,6 @@
 import { MetricQuerySchema } from "../dto/metric-query";
 import { MetricUpdatesMessageSchema } from "../dto/metric-updates-message";
+import { DateUtils } from "../utils/date-utils";
 
 interface DynamoDBItemIdentifier {
   pk: string;
@@ -8,7 +9,14 @@ interface DynamoDBItemIdentifier {
 }
 
 export class DynamoDBMapper {
-  public static eventMessageToItems(
+  /**
+   * a {@link MetricUpdatesMessage} is associated with more than one metric resource:
+   * - Daily workspace-level count
+   * - Daily user-level count (only if userId is present)
+   * - Hourly workspace-level count
+   * - Hourly user-level count
+   */
+  public static toAssociatedItems(
     message: MetricUpdatesMessageSchema,
   ): DynamoDBItemIdentifier[] {
     const dailySK = this.messageToDailySK(message);
@@ -54,7 +62,7 @@ export class DynamoDBMapper {
   }
 
   public static messageToDailySK(message: MetricUpdatesMessageSchema): string {
-    return `D#${message.date.substring(0, 10)}`;
+    return `D#${DateUtils.getDay(message.date)}`;
   }
 
   public static queryRequestToPK(query: MetricQuerySchema): string {
@@ -63,6 +71,9 @@ export class DynamoDBMapper {
       : this.workspacePK(query.workspaceId, query.metricId);
   }
 
+  /**
+   * This is an custom application-level virtual identifier for an item
+   */
   private static toItemID(pk: string, sk: string): string {
     return `${pk}#${sk}`;
   }

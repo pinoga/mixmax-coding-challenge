@@ -90,6 +90,9 @@ export class MetricsService {
     ];
   }
 
+  /**
+   * Given an array of event records, aggregate the counts by item identifier
+   */
   public aggregateMetricUpdateRecords(
     records: {
       body: string;
@@ -108,13 +111,13 @@ export class MetricsService {
         });
         return acc;
       }
-      const items = DynamoDBMapper.eventMessageToItems(message);
+      const items = DynamoDBMapper.toAssociatedItems(message);
 
-      const associatedItems = new Set<string>();
-      messageToItemsMap[record.messageId] = associatedItems;
+      messageToItemsMap[record.messageId] = new Set(
+        items.map((item) => item.id),
+      );
 
       for (const item of items) {
-        associatedItems.add(item.id);
         const updateItemRequest: UpdateItemRequest | undefined = acc[item.id];
         if (updateItemRequest) {
           updateItemRequest.inc += message.count;
@@ -138,6 +141,10 @@ export class MetricsService {
     };
   }
 
+  /**
+   * Given an initial and final date strings (in the {@link DateValidator.dateFormat} format),
+   * returns an array of ranges, each representing a query to the metric repository
+   */
   public static decomposeDateRange(
     fromDate: string,
     toDate: string,
@@ -160,7 +167,7 @@ export class MetricsService {
 
     // full days range
     if (!partialStart && !partialEnd) {
-      return [{ type: "daily", fromDate, toDate }];
+      return [{ type: "daily", fromDate: fromDay, toDate: toDay }];
     }
 
     // first day is full, last day is partial
@@ -178,7 +185,7 @@ export class MetricsService {
     // first day is partial, last day is full
     if (!partialEnd) {
       return [
-        { type: "hourly", fromDate, toDate: DateUtils.lastHour(toDate) },
+        { type: "hourly", fromDate, toDate: DateUtils.lastHour(fromDate) },
         { type: "daily", fromDate: DateUtils.nextDay(fromDay), toDate: toDay },
       ];
     }
@@ -186,11 +193,11 @@ export class MetricsService {
     const firstDay: DateRange = {
       type: "hourly",
       fromDate,
-      toDate: DateUtils.lastHour(toDate),
+      toDate: DateUtils.lastHour(fromDate),
     };
     const lastDay: DateRange = {
       type: "hourly",
-      fromDate: DateUtils.firstHour(fromDate),
+      fromDate: DateUtils.firstHour(toDate),
       toDate: toDate,
     };
 
