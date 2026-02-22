@@ -69,7 +69,7 @@ export class MetricsRepository {
         },
         UpdateExpression: "ADD #count :inc",
         ExpressionAttributeNames: { "#count": "count" },
-        ExpressionAttributeValues: { ":inc": inc.toString() },
+        ExpressionAttributeValues: { ":inc": inc },
       }),
     );
   }
