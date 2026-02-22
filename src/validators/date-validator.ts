@@ -6,10 +6,12 @@ export class DateValidator {
     "^\\d{4}-\\d{2}-\\d{2}T\\d{2}$",
   );
 
+  public static dateFormat = "yyyy-MM-dd'T'HH";
+
   public static "YYYY-MM-DDThhRegExpDate"(): ZodString {
     return z
       .string()
       .regex(this["YYYY-MM-DDThhRegExp"])
-      .refine((date) => isValid(parse(date, "yyyy-MM-dd'T'HH", new Date())));
+      .refine((date) => isValid(parse(date, this.dateFormat, new Date())));
   }
 }

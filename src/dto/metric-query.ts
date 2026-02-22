@@ -1,4 +1,4 @@
-import { differenceInDays } from "date-fns";
+import { differenceInDays, parse } from "date-fns";
 import z from "zod";
 import { DateValidator } from "../validators/date-validator";
 
@@ -16,9 +16,14 @@ export class MetricQuery {
       userId: z.string().min(1).optional(),
     })
     .superRefine((data, ctx) => {
-      if (
-        differenceInDays(data.toDate, data.fromDate) > this.maxDateRangeInDays
-      ) {
+      const fromDate = parse(
+        data.fromDate,
+        DateValidator.dateFormat,
+        new Date(),
+      );
+      const toDate = parse(data.toDate, DateValidator.dateFormat, new Date());
+
+      if (differenceInDays(toDate, fromDate) > this.maxDateRangeInDays) {
         ctx.addIssue({
           code: "custom",
           message: `"toDate" must be at most ${this.maxDateRangeInDays} days from "fromDate"`,
