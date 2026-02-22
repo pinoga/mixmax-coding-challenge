@@ -7,6 +7,7 @@ import { MetricsRepository } from "../dynamodb/dynamodb-repository";
 import { Logger } from "../logger/logger";
 import { DynamoDBMapper } from "../mappers/dynamodb-mapper";
 import { concurrently } from "../utils/concurrently";
+import { DateRange, DateUtils } from "../utils/date-utils";
 
 export interface UpdateItemRequest {
   sk: string;
@@ -29,20 +30,12 @@ export class MetricsService {
     private readonly logger: Logger = Logger.instance(),
   ) {}
 
-  public async queryMetricCount(query: MetricQuerySchema): Promise<number> {
-    const pk = DynamoDBMapper.queryRequestToPK(query);
-    const ranges = DynamoDBMapper.decomposeDateRange(
+  public queryMetricCount(query: MetricQuerySchema): Promise<number> {
+    const ranges = MetricsService.decomposeDateRange(
       query.fromDate,
       query.toDate,
     );
-
-    const counts = await Promise.all(
-      ranges.map(({ fromSK, toSK }) =>
-        this.metricsRepository.queryCountBySKRange(pk, fromSK, toSK),
-      ),
-    );
-
-    return counts.reduce((sum, c) => sum + c, 0);
+    return this.metricsRepository.getMetricCount(query, ranges);
   }
 
   public async batchIncrementMetrics({
@@ -143,5 +136,75 @@ export class MetricsService {
       itemToRequestMap,
       messageToItemsMap,
     };
+  }
+
+  public static decomposeDateRange(
+    fromDate: string,
+    toDate: string,
+  ): DateRange[] {
+    const fromDay = DateUtils.getDay(fromDate);
+    const fromHour = DateUtils.getHour(fromDate);
+    const toDay = DateUtils.getDay(toDate);
+    const toHour = DateUtils.getHour(toDate);
+
+    const partialStart = fromHour !== "00";
+    const partialEnd = toHour !== "23";
+
+    // same day range
+    if (fromDay === toDay) {
+      if (!partialStart && !partialEnd) {
+        return [{ type: "daily", fromDate: fromDay, toDate: fromDay }];
+      }
+      return [{ type: "hourly", fromDate, toDate }];
+    }
+
+    // full days range
+    if (!partialStart && !partialEnd) {
+      return [{ type: "daily", fromDate, toDate }];
+    }
+
+    // first day is full, last day is partial
+    if (!partialStart) {
+      return [
+        { type: "daily", fromDate: fromDay, toDate: DateUtils.prevDay(toDay) },
+        {
+          type: "hourly",
+          fromDate: DateUtils.firstHour(toDate),
+          toDate: toDate,
+        },
+      ];
+    }
+
+    // first day is partial, last day is full
+    if (!partialEnd) {
+      return [
+        { type: "hourly", fromDate, toDate: DateUtils.lastHour(toDate) },
+        { type: "daily", fromDate: DateUtils.nextDay(fromDay), toDate: toDay },
+      ];
+    }
+
+    const firstDay: DateRange = {
+      type: "hourly",
+      fromDate,
+      toDate: DateUtils.lastHour(toDate),
+    };
+    const lastDay: DateRange = {
+      type: "hourly",
+      fromDate: DateUtils.firstHour(fromDate),
+      toDate: toDate,
+    };
+
+    // two partial days, but no days in between
+    if (DateUtils.nextDay(fromDay) === toDay) {
+      return [firstDay, lastDay];
+    }
+
+    const fullDays: DateRange = {
+      type: "daily",
+      fromDate: DateUtils.nextDay(fromDay),
+      toDate: DateUtils.prevDay(toDay),
+    };
+
+    return [firstDay, fullDays, lastDay];
   }
 }

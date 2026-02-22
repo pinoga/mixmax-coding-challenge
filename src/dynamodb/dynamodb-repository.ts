@@ -3,6 +3,9 @@ import {
   UpdateItemCommand,
   UpdateItemCommandOutput,
 } from "@aws-sdk/client-dynamodb";
+import { MetricQuerySchema } from "../dto/metric-query";
+import { DynamoDBMapper } from "../mappers/dynamodb-mapper";
+import { DateRange } from "../utils/date-utils";
 import { DynamoDBClientFactory } from "./dynamodb-client";
 
 export interface IncrementMetricItem {
@@ -18,7 +21,27 @@ export class MetricsRepository {
     private readonly client = DynamoDBClientFactory.create({}),
   ) {}
 
-  public async queryCountBySKRange(
+  public async getMetricCount(
+    query: MetricQuerySchema,
+    ranges: DateRange[],
+  ): Promise<number> {
+    const pk = DynamoDBMapper.queryRequestToPK(query);
+
+    const counts = await Promise.all(
+      ranges.map((range) => {
+        const prefix = range.type === "daily" ? "D#" : "H#";
+        return this.queryCountBySKRange(
+          pk,
+          `${prefix}${range.fromDate}`,
+          `${prefix}${range.toDate}`,
+        );
+      }),
+    );
+
+    return counts.reduce((sum, c) => sum + c, 0);
+  }
+
+  private async queryCountBySKRange(
     pk: string,
     fromSK: string,
     toSK: string,
