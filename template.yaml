@@ -3,10 +3,6 @@ Transform: AWS::Serverless-2016-10-31
 Description: Feature Usage Lambda Functions
 
 Parameters:
-  BatchSize:
-    Type: Number
-    Default: "300"
-
   SQSVisibilityTimeout:
     Type: Number
     Default: "60"
@@ -27,6 +23,10 @@ Parameters:
     Type: Number
     Default: "300"
 
+  DynamoDBClientMaxSockets:
+    Type: Number
+    Default: "50"
+
   DynamoDBTableName:
     Type: String
     Default: "feature-usage-local"
@@ -44,6 +44,9 @@ Globals:
     Runtime: nodejs18.x
     Timeout: !Ref LambdaTimeout
     MemorySize: !Ref LambdaMemorySize
+    Environment:
+      Variables:
+        DYNAMODB_CLIENT_MAX_SOCKETS: !Ref DynamoDBClientMaxSockets
 
 Resources:
   MetricQueryHandler:
@@ -93,7 +96,7 @@ Resources:
       BuildMethod: esbuild
       BuildProperties:
         Minify: false
-        Target: es2020
+        Target: es2022
         Sourcemap: true
         EntryPoints:
           - src/metric-updates-consumer.ts
@@ -101,7 +104,7 @@ Resources:
   UsageTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: feature-usage-local
+      TableName: !Ref DynamoDBTableName
       AttributeDefinitions:
         - AttributeName: pk
           AttributeType: S

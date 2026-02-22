@@ -8,7 +8,17 @@ import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 export class DynamoDBClientFactory {
   public static create(options: DynamoDBClientConfig) {
     return DynamoDBDocumentClient.from(
-      new DynamoDBAWSClient({ maxAttempts: 3, ...options }),
+      new DynamoDBAWSClient({
+        requestHandler: {
+          httpsAgent: {
+            maxSockets: Number(process.env.DYNAMODB_CLIENT_MAX_SOCKETS) || 50,
+          },
+          requestTimeout:
+            Number(process.env.DYNAMODB_CLIENT_REQUEST_TIMEOUT_MS) || 3000,
+        },
+        maxAttempts: 3,
+        ...options,
+      }),
     );
   }
 }
