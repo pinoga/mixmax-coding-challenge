@@ -3,7 +3,7 @@ import {
   DynamoDBClientConfig,
 } from "@aws-sdk/client-dynamodb";
 
-// Why is this useful? We may want to add instrumentation and meaningful default to our clients
+// Why is this useful? We may want to add instrumentation and meaningful defaults to our clients
 export class DynamoDBClientFactory {
   public static create(options: DynamoDBClientConfig) {
     return new DynamoDBAWSClient({

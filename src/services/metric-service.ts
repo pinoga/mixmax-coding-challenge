@@ -2,10 +2,10 @@ import { MetricQuerySchema } from "../dto/metric-query";
 import {
   MetricUpdatesMessage,
   MetricUpdatesMessageSchema,
-} from "../dto/metric-updates-event";
+} from "../dto/metric-updates-message";
 import { MetricsRepository } from "../dynamodb/dynamodb-repository";
 import { Logger } from "../logger/logger";
-import { DynamoDBMapper } from "../mappers/dynamodb.mapper";
+import { DynamoDBMapper } from "../mappers/dynamodb-mapper";
 import { concurrently } from "../utils/concurrently";
 
 export interface UpdateItemRequest {
@@ -29,8 +29,20 @@ export class MetricsService {
     private readonly logger: Logger = Logger.instance(),
   ) {}
 
-  public queryMetricCount(query: MetricQuerySchema): Promise<number> {
-    return this.metricsRepository.getMetricCountFromDates(query);
+  public async queryMetricCount(query: MetricQuerySchema): Promise<number> {
+    const pk = DynamoDBMapper.queryRequestToPK(query);
+    const ranges = DynamoDBMapper.decomposeDateRange(
+      query.fromDate,
+      query.toDate,
+    );
+
+    const counts = await Promise.all(
+      ranges.map(({ fromSK, toSK }) =>
+        this.metricsRepository.queryCountBySKRange(pk, fromSK, toSK),
+      ),
+    );
+
+    return counts.reduce((sum, c) => sum + c, 0);
   }
 
   public async batchIncrementMetrics({
@@ -75,7 +87,7 @@ export class MetricsService {
 
     // Since we try to update every aggregated item in parallel, a single failure potentially affects multiple messages
     // To determine whether or not a message should be retried, we check if all items associated with a message actually failed
-    // This favors under-counting in constrast to over-counting, as it only takes one successful item to consider a message successful
+    // This favors under-counting in contrast to over-counting, as it only takes one successful item to consider a message successful
     return [
       ...messagesWithFailedItems.values().filter((messageWithFailedItem) => {
         return messageToItemsMap[messageWithFailedItem]!.values().every(

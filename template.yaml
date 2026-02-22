@@ -52,7 +52,7 @@ Resources:
   MetricQueryHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/metric-query-handler.main
+      Handler: src/handlers/metric-query-handler.main
       CodeUri: .
       Environment:
         Variables:
@@ -69,12 +69,12 @@ Resources:
         Target: es2022
         Sourcemap: true
         EntryPoints:
-          - src/metric-query-handler.ts
+          - src/handlers/metric-query-handler.ts
 
   MetricUpdatesConsumer:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/metric-updates-consumer.main
+      Handler: src/handlers/metric-updates-consumer.main
       CodeUri: .
       Events:
         SQSEvent:
@@ -99,7 +99,7 @@ Resources:
         Target: es2022
         Sourcemap: true
         EntryPoints:
-          - src/metric-updates-consumer.ts
+          - src/handlers/metric-updates-consumer.ts
 
   UsageTable:
     Type: AWS::DynamoDB::Table

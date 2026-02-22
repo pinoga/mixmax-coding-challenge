@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test": "jest --testPathPattern=tests/unit --testPathIgnorePatterns=internal",
+    "test": "jest --testPathPattern=tests/unit",
     "test:e2e": "jest --config jest.config.e2e.dynamodb.js --testPathIgnorePatterns=internal --testTimeout=30000",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && sam build",

@@ -3,8 +3,6 @@ import {
   UpdateItemCommand,
   UpdateItemCommandOutput,
 } from "@aws-sdk/client-dynamodb";
-import { MetricQuerySchema } from "../dto/metric-query";
-import { DynamoDBMapper } from "../mappers/dynamodb.mapper";
 import { DynamoDBClientFactory } from "./dynamodb-client";
 
 export interface IncrementMetricItem {
@@ -20,8 +18,10 @@ export class MetricsRepository {
     private readonly client = DynamoDBClientFactory.create({}),
   ) {}
 
-  public async getMetricCountFromDates(
-    query: MetricQuerySchema,
+  public async queryCountBySKRange(
+    pk: string,
+    fromSK: string,
+    toSK: string,
   ): Promise<number> {
     let count = 0;
     let exclusiveStartKey: Record<string, { S: string }> | undefined;
@@ -30,12 +30,11 @@ export class MetricsRepository {
       const results = await this.client.send(
         new QueryCommand({
           TableName: MetricsRepository.tableName,
-          KeyConditionExpression:
-            "pk = :pk and sk between :fromDate and :toDate",
+          KeyConditionExpression: "pk = :pk and sk between :fromSK and :toSK",
           ExpressionAttributeValues: {
-            ":pk": { S: DynamoDBMapper.queryRequestToPK(query) },
-            ":fromDate": { S: `H#${query.fromDate}` },
-            ":toDate": { S: `H#${query.toDate}` },
+            ":pk": { S: pk },
+            ":fromSK": { S: fromSK },
+            ":toSK": { S: toSK },
           },
           ExclusiveStartKey: exclusiveStartKey,
         }),

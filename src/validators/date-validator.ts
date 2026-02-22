@@ -1,5 +1,5 @@
 import { isValid, parse } from "date-fns";
-import z, { ZodString } from "zod";
+import z from "zod";
 
 export class DateValidator {
   public static "YYYY-MM-DDThhRegExp" = new RegExp(
@@ -8,7 +8,7 @@ export class DateValidator {
 
   public static dateFormat = "yyyy-MM-dd'T'HH";
 
-  public static "YYYY-MM-DDThhRegExpDate"(): ZodString {
+  public static "YYYY-MM-DDThhRegExpDate"() {
     return z
       .string()
       .regex(this["YYYY-MM-DDThhRegExp"])
