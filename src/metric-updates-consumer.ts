@@ -4,7 +4,12 @@ import {
   UpdateItemCommandInput,
 } from "@aws-sdk/client-dynamodb";
 import { SQSBatchResponse, SQSEvent } from "aws-lambda";
-import { EventMessageBody } from "./types/event";
+import {
+  MetricUpdatesMessage,
+  MetricUpdatesMessageSchema,
+} from "./events/metric-updates-event";
+import { Logger } from "./logger/logger";
+import { DynamoDBMapper } from "./mappers/dynamodb.mapper";
 
 interface UpdateItemRequest {
   sk: string;
@@ -17,6 +22,7 @@ type UpdateItemRequestPromises = Promise<UpdateItemRequest>[];
 
 export const main = async (event: SQSEvent): Promise<SQSBatchResponse> => {
   const client = new DynamoDBClient({});
+  const logger = Logger.instance();
   const tableName = `feature-usage-${process.env.ENV || "local"}`;
   const batchChunkSize = Number(process.env.BATCH_CHUNK_SIZE) || 100;
 
@@ -33,17 +39,44 @@ export const main = async (event: SQSEvent): Promise<SQSBatchResponse> => {
     ExpressionAttributeValues: { ":inc": { N: "" } },
   };
 
-  let parsedMessageBody: EventMessageBody;
+  let parsedMessageBody: MetricUpdatesMessageSchema;
   let itemID: string;
 
-  // const batchItemRequests: ItemIDToBatchItemRequestMap = event.Records.reduce(
-  //   (acc, record) => {
-  //     parsedMessageBody = JSON.parse(record.body);
-  //     itemID =
-  //     const requestForItem = acc[]
-  //   },
-  //   {},
-  // );
+  const batchItemRequests = event.Records.reduce<ItemIDToUpdateItemRequestMap>(
+    (acc, record) => {
+      let message: MetricUpdatesMessageSchema;
+      try {
+        message = MetricUpdatesMessage.validate(record.body);
+      } catch (error) {
+        logger.error({
+          message: "Invalid MetricUpdatesMessage, skipping",
+          meta: { error },
+        });
+        return acc;
+      }
+      const items = DynamoDBMapper.eventMessageToItems(message);
+
+      for (const item of items) {
+        let updateItemRequest: UpdateItemRequest | undefined = acc[item.id];
+        if (updateItemRequest) {
+          updateItemRequest.inc += message.count;
+        } else {
+          acc[item.id] = {
+            sk: item.sk,
+            pk: item.pk,
+            inc: message.count,
+          };
+        }
+      }
+
+      return acc;
+    },
+    {},
+  );
+
+  // Signal the event loop that we no longer need this in memory
+  // @ts-expect-error
+  event = null;
 
   // await Promise.all(batchItemRequests);
 
