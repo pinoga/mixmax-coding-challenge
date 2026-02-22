@@ -1,10 +1,10 @@
 import { UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { SQSBatchResponse, SQSEvent } from "aws-lambda";
-import { DynamoDBClientFactory } from "./dynamodb/dynamodb-client";
 import {
   MetricUpdatesMessage,
   MetricUpdatesMessageSchema,
-} from "./events/metric-updates-event";
+} from "./dto/metric-updates-event";
+import { DynamoDBClientFactory } from "./dynamodb/dynamodb-client";
 import { Logger } from "./logger/logger";
 import { DynamoDBMapper } from "./mappers/dynamodb.mapper";
 import { concurrently } from "./utils/concurrently";
