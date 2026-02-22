@@ -1,14 +1,11 @@
-import { UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
-import { QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  QueryCommand,
+  UpdateItemCommand,
+  UpdateItemCommandOutput,
+} from "@aws-sdk/client-dynamodb";
 import { MetricQuerySchema } from "../dto/metric-query";
 import { DynamoDBMapper } from "../mappers/dynamodb.mapper";
 import { DynamoDBClientFactory } from "./dynamodb-client";
-
-interface MetricItem {
-  pk: string;
-  sk: string;
-  count?: number;
-}
 
 export interface IncrementMetricItem {
   sk: string;
@@ -27,7 +24,7 @@ export class MetricsRepository {
     query: MetricQuerySchema,
   ): Promise<number> {
     let count = 0;
-    let exclusiveStartKey: Record<string, unknown> | undefined;
+    let exclusiveStartKey: Record<string, { S: string }> | undefined;
 
     do {
       const results = await this.client.send(
@@ -36,20 +33,20 @@ export class MetricsRepository {
           KeyConditionExpression:
             "pk = :pk and sk between :fromDate and :toDate",
           ExpressionAttributeValues: {
-            ":pk": DynamoDBMapper.queryRequestToPK(query),
-            ":fromDate": `H#${query.fromDate}`,
-            ":toDate": `H#${query.toDate}`,
+            ":pk": { S: DynamoDBMapper.queryRequestToPK(query) },
+            ":fromDate": { S: `H#${query.fromDate}` },
+            ":toDate": { S: `H#${query.toDate}` },
           },
           ExclusiveStartKey: exclusiveStartKey,
         }),
       );
 
-      count += ((results.Items ?? []) as MetricItem[]).reduce(
-        (sum, item) => sum + (item.count ?? 0),
+      count += (results.Items ?? []).reduce(
+        (sum, item) => sum + Number(item.count?.N ?? 0),
         0,
       );
 
-      exclusiveStartKey = results.LastEvaluatedKey;
+      exclusiveStartKey = results.LastEvaluatedKey as typeof exclusiveStartKey;
     } while (exclusiveStartKey);
 
     return count;
@@ -61,15 +58,15 @@ export class MetricsRepository {
     sk,
   }: IncrementMetricItem): Promise<UpdateItemCommandOutput> {
     return this.client.send(
-      new UpdateCommand({
+      new UpdateItemCommand({
         TableName: MetricsRepository.tableName,
         Key: {
-          pk,
-          sk,
+          pk: { S: pk },
+          sk: { S: sk },
         },
         UpdateExpression: "ADD #count :inc",
         ExpressionAttributeNames: { "#count": "count" },
-        ExpressionAttributeValues: { ":inc": inc },
+        ExpressionAttributeValues: { ":inc": { N: inc.toString() } },
       }),
     );
   }

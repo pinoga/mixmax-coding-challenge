@@ -41,7 +41,7 @@ Parameters:
 
 Globals:
   Function:
-    Runtime: nodejs18.x
+    Runtime: nodejs22.x
     Timeout: !Ref LambdaTimeout
     MemorySize: !Ref LambdaMemorySize
     Environment:

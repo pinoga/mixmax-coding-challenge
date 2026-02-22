@@ -5,12 +5,12 @@
   "scripts": {
     "test": "jest --testPathPattern=tests/unit --testPathIgnorePatterns=internal",
     "test:e2e": "jest --config jest.config.e2e.dynamodb.js --testPathIgnorePatterns=internal --testTimeout=30000",
-    "build": "sam build",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && sam build",
     "lint": "eslint 'src/**/*.ts'"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.600.0",
-    "@aws-sdk/lib-dynamodb": "^3.995.0",
     "date-fns": "^4.1.0",
     "p-limit": "^7.3.0",
     "zod": "^4.3.6"
@@ -20,7 +20,7 @@
     "@shelf/jest-dynamodb": "^3.4.1",
     "@types/aws-lambda": "^8.10.160",
     "@types/jest": "^29.5.12",
-    "@types/node": "^20.14.0",
+    "@types/node": "^22.0.0",
     "@typescript-eslint/eslint-plugin": "^8.55.0",
     "@typescript-eslint/parser": "^8.55.0",
     "esbuild": "^0.21.0",
