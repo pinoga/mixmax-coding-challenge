@@ -15,7 +15,7 @@ interface UpdateItemRequest {
   sk: string;
   pk: string;
   inc: number;
-  messageId: string;
+  messageIds: string[];
 }
 
 type ItemIDToUpdateItemRequestMap = Record<string, UpdateItemRequest>;
@@ -45,9 +45,10 @@ export const main = async (event: SQSEvent): Promise<SQSBatchResponse> => {
         let updateItemRequest: UpdateItemRequest | undefined = acc[item.id];
         if (updateItemRequest) {
           updateItemRequest.inc += message.count;
+          updateItemRequest.messageIds.push(record.messageId);
         } else {
           acc[item.id] = {
-            messageId: record.messageId,
+            messageIds: [record.messageId],
             sk: item.sk,
             pk: item.pk,
             inc: message.count,
@@ -65,42 +66,39 @@ export const main = async (event: SQSEvent): Promise<SQSBatchResponse> => {
   event = null;
 
   await Promise.all(
-    Object.values(batchItemRequests).reduce<
-      Promise<UpdateItemCommandOutput | void>[]
-    >((acc, { pk, sk, inc, messageId }) => {
-      acc.push(
-        client
-          .send(
-            new UpdateItemCommand({
-              TableName: tableName,
-              Key: {
-                pk: { S: pk },
-                sk: { S: sk },
-              },
-              UpdateExpression: "ADD #count :inc",
-              ExpressionAttributeNames: { "#count": "count" },
-              ExpressionAttributeValues: { ":inc": { N: inc.toString() } },
-            }),
-          )
-          .catch((error) => {
-            batchItemFailedMessageIDs.add(messageId);
-            logger.error({
-              message: "Error updating metrics for DynamoDB item. Requeueing",
-              meta: {
-                messageId,
-                error,
-                pk,
-                sk,
-                inc,
-              },
-            });
+    Object.values(batchItemRequests).map<
+      Promise<UpdateItemCommandOutput | void>
+    >(({ pk, sk, inc, messageIds }) => {
+      return client
+        .send(
+          new UpdateItemCommand({
+            TableName: tableName,
+            Key: {
+              pk: { S: pk },
+              sk: { S: sk },
+            },
+            UpdateExpression: "ADD #count :inc",
+            ExpressionAttributeNames: { "#count": "count" },
+            ExpressionAttributeValues: { ":inc": { N: inc.toString() } },
           }),
-      );
-      return acc;
-    }, []),
+        )
+        .catch((error) => {
+          messageIds.forEach((messageId) => {
+            batchItemFailedMessageIDs.add(messageId);
+          });
+          logger.error({
+            message: "Error updating metrics for DynamoDB item. Requeueing",
+            meta: {
+              messageIds,
+              error,
+              pk,
+              sk,
+              inc,
+            },
+          });
+        });
+    }),
   );
-
-  // await Promise.all(batchItemRequests);
 
   return {
     batchItemFailures: [...batchItemFailedMessageIDs].map((itemIdentifier) => ({
