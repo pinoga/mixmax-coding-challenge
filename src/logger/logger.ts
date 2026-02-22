@@ -17,8 +17,15 @@ export class Logger {
     return this._logger;
   }
 
+  private static replacer(_key: string, value: unknown): unknown {
+    if (value instanceof Error) {
+      return { name: value.name, message: value.message, stack: value.stack };
+    }
+    return value;
+  }
+
   private log(level: LogLevel, msg: LogMessage): void {
-    const msgString = JSON.stringify(msg);
+    const msgString = JSON.stringify(msg, Logger.replacer);
     switch (level) {
       case LogLevel.ERROR:
         return console.error(msgString);
