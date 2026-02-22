@@ -47,7 +47,7 @@ export const main = async (event: SQSEvent): Promise<SQSBatchResponse> => {
       const items = DynamoDBMapper.eventMessageToItems(message);
 
       for (const item of items) {
-        let updateItemRequest: UpdateItemRequest | undefined = acc[item.id];
+        const updateItemRequest: UpdateItemRequest | undefined = acc[item.id];
         if (updateItemRequest) {
           updateItemRequest.inc += message.count;
           updateItemRequest.messageIds.push(record.messageId);
@@ -66,9 +66,10 @@ export const main = async (event: SQSEvent): Promise<SQSBatchResponse> => {
     {},
   );
 
-  // Signal the event loop that we no longer need this in memory
-  // @ts-expect-error
+  /* eslint-disable no-useless-assignment */
+  // @ts-expect-error Signal the event loop that we no longer need this in memory
   event = null;
+  /* eslint-enable no-useless-assignment */
 
   // Why not a plain Promise.all?
   // For smaller batches, it may not make much difference, but the Node.js can only
