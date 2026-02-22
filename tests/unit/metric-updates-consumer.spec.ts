@@ -200,12 +200,14 @@ describe("metric-updates-consumer", () => {
 
   it("should only report failed messageIds, not successful ones (partial failure)", async () => {
     // metric-a writes succeed (hourly + daily), metric-b writes fail (hourly + daily)
-    mockSend.mockImplementation((command: { input: { Key: { pk: { S: string } } } }) => {
-      if (command.input.Key?.pk?.S?.includes("metric-b")) {
-        return Promise.reject(new Error("throttle"));
-      }
-      return Promise.resolve({});
-    });
+    mockSend.mockImplementation(
+      (command: { input: { Key: { pk: { S: string } } } }) => {
+        if (command.input.Key?.pk?.S?.includes("metric-b")) {
+          return Promise.reject(new Error("throttle"));
+        }
+        return Promise.resolve({});
+      },
+    );
 
     const result = await consumer(
       sqsEvent([

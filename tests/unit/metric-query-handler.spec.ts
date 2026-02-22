@@ -37,9 +37,7 @@ describe("metric-query-handler", () => {
       Items: [{ count: { N: "7" } }],
     });
 
-    const result = await queryHandler(
-      validQueryRequest({ userId: "user-1" }),
-    );
+    const result = await queryHandler(validQueryRequest({ userId: "user-1" }));
 
     expect(result.count).toBe(7);
     expect(result.userId).toBe("user-1");
@@ -63,7 +61,9 @@ describe("metric-query-handler", () => {
 
   it("should handle items with missing count field", async () => {
     mockSend.mockResolvedValue({
-      Items: [{ pk: { S: "WSP#ws-1#MET#emails-sent" }, sk: { S: "H#2024-01-15T14" } }],
+      Items: [
+        { pk: { S: "WSP#ws-1#MET#emails-sent" }, sk: { S: "H#2024-01-15T14" } },
+      ],
     });
 
     const result = await queryHandler(validQueryRequest());
@@ -75,11 +75,17 @@ describe("metric-query-handler", () => {
     mockSend
       .mockResolvedValueOnce({
         Items: [{ count: { N: "10" } }],
-        LastEvaluatedKey: { pk: { S: "WSP#ws-1" }, sk: { S: "H#2024-01-15T12" } },
+        LastEvaluatedKey: {
+          pk: { S: "WSP#ws-1" },
+          sk: { S: "H#2024-01-15T12" },
+        },
       })
       .mockResolvedValueOnce({
         Items: [{ count: { N: "5" } }],
-        LastEvaluatedKey: { pk: { S: "WSP#ws-1" }, sk: { S: "H#2024-01-20T00" } },
+        LastEvaluatedKey: {
+          pk: { S: "WSP#ws-1" },
+          sk: { S: "H#2024-01-20T00" },
+        },
       })
       .mockResolvedValueOnce({
         Items: [{ count: { N: "3" } }],
