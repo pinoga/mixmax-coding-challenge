@@ -2,14 +2,50 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: Feature Usage Lambda Functions
 
+Parameters:
+  BatchSize:
+    Type: Number
+    Default: "300"
+
+  SQSVisibilityTimeout:
+    Type: Number
+    Default: "60"
+
+  LambdaTimeout:
+    Type: Number
+    Default: "30"
+
+  LambdaMemorySize:
+    Type: Number
+    Default: "256"
+
+  SQSBatchSize:
+    Type: Number
+    Default: "300"
+
+  DynamoDBWriteConcurrency:
+    Type: Number
+    Default: "300"
+
+  DynamoDBTableName:
+    Type: String
+    Default: "feature-usage-local"
+
+  DynamoDBClientRequestTimeoutMs:
+    Type: Number
+    Default: "3000"
+
 Globals:
   Function:
     Runtime: nodejs18.x
-    Timeout: 30
-    MemorySize: 256
+    Timeout: !Ref LambdaTimeout
+    MemorySize: !Ref LambdaMemorySize
     Environment:
       Variables:
-        ENV: local
+        ENV: !Ref Environment
+        DYNAMODB_WRITE_CONCURRENCY: !Ref DynamoDBWriteConcurrency
+        DYNAMODB_TABLE_NAME: !Ref DynamoDBTableName
+        DYNAMODB_CLIENT_REQUEST_TIMEOUT_MS: !Ref DynamoDBClientRequestTimeoutMs
 
 Resources:
   MetricQueryHandler:
@@ -39,7 +75,7 @@ Resources:
           Type: SQS
           Properties:
             Queue: !GetAtt UsageQueue.Arn
-            BatchSize: 300
+            BatchSize: !Ref SQSBatchSize
             FunctionResponseTypes:
               - ReportBatchItemFailures
       Policies:
@@ -77,4 +113,4 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: feature-usage-updates
-      VisibilityTimeout: 60
+      VisibilityTimeout: !Ref SQSVisibilityTimeout

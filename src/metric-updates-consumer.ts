@@ -1,15 +1,13 @@
-import {
-  DynamoDBClient,
-  UpdateItemCommand,
-  UpdateItemCommandOutput,
-} from "@aws-sdk/client-dynamodb";
+import { UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { SQSBatchResponse, SQSEvent } from "aws-lambda";
+import { DynamoDBClientFactory } from "./dynamodb/dynamodb-client";
 import {
   MetricUpdatesMessage,
   MetricUpdatesMessageSchema,
 } from "./events/metric-updates-event";
 import { Logger } from "./logger/logger";
 import { DynamoDBMapper } from "./mappers/dynamodb.mapper";
+import { concurrently } from "./utils/concurrently";
 
 interface UpdateItemRequest {
   sk: string;
@@ -19,14 +17,21 @@ interface UpdateItemRequest {
 }
 
 type ItemIDToUpdateItemRequestMap = Record<string, UpdateItemRequest>;
+const dynamoDbTableName = process.env.DYNAMODB_TABLE_NAME;
+const concurrency = Number(process.env.DYNAMODB_WRITE_CONCURRENCY) || 300;
+const client = DynamoDBClientFactory.create({
+  requestHandler: {
+    requestTimeout:
+      Number(process.env.DYNAMODB_CLIENT_REQUEST_TIMEOUT_MS) || 3000,
+    httpsAgent: { maxSockets: concurrency },
+  },
+});
+const logger = Logger.instance();
 
 export const main = async (event: SQSEvent): Promise<SQSBatchResponse> => {
-  const client = new DynamoDBClient({});
-  const logger = Logger.instance();
-  const tableName = `feature-usage-${process.env.ENV || "local"}`;
-
   const batchItemFailedMessageIDs = new Set<string>();
 
+  // aggregating increments for each DynamoDB item to save round-trips
   const batchItemRequests = event.Records.reduce<ItemIDToUpdateItemRequestMap>(
     (acc, record) => {
       let message: MetricUpdatesMessageSchema;
@@ -65,39 +70,44 @@ export const main = async (event: SQSEvent): Promise<SQSBatchResponse> => {
   // @ts-expect-error
   event = null;
 
-  await Promise.all(
-    Object.values(batchItemRequests).map<
-      Promise<UpdateItemCommandOutput | void>
-    >(({ pk, sk, inc, messageIds }) => {
-      return client
-        .send(
-          new UpdateItemCommand({
-            TableName: tableName,
-            Key: {
-              pk: { S: pk },
-              sk: { S: sk },
-            },
-            UpdateExpression: "ADD #count :inc",
-            ExpressionAttributeNames: { "#count": "count" },
-            ExpressionAttributeValues: { ":inc": { N: inc.toString() } },
-          }),
-        )
-        .catch((error) => {
-          messageIds.forEach((messageId) => {
-            batchItemFailedMessageIDs.add(messageId);
-          });
-          logger.error({
-            message: "Error updating metrics for DynamoDB item. Requeueing",
-            meta: {
-              messageIds,
-              error,
-              pk,
-              sk,
-              inc,
-            },
-          });
-        });
-    }),
+  // Why not a plain Promise.all?
+  // For smaller batches, it may not make much difference, but the Node.js can only
+  // process so much I/O in parallel, so we may want to increase the SQS batch size independently
+  // (to gain performance on deduplication) from the concurrency limit
+  await concurrently(
+    Object.values(batchItemRequests).map(
+      ({ pk, sk, inc, messageIds }) =>
+        () =>
+          client
+            .send(
+              new UpdateItemCommand({
+                TableName: dynamoDbTableName,
+                Key: {
+                  pk: { S: pk },
+                  sk: { S: sk },
+                },
+                UpdateExpression: "ADD #count :inc",
+                ExpressionAttributeNames: { "#count": "count" },
+                ExpressionAttributeValues: { ":inc": { N: inc.toString() } },
+              }),
+            )
+            .catch((error) => {
+              messageIds.forEach((messageId) => {
+                batchItemFailedMessageIDs.add(messageId);
+              });
+              logger.error({
+                message: "Error updating metrics for DynamoDB item. Requeueing",
+                meta: {
+                  messageIds,
+                  error,
+                  pk,
+                  sk,
+                  inc,
+                },
+              });
+            }),
+    ),
+    concurrency,
   );
 
   return {
